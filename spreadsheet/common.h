@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <iosfwd>
 #include <memory>
 #include <stdexcept>
@@ -26,6 +27,12 @@ struct Position {
     static const Position NONE;
 };
 
+struct PositionHasher {
+    size_t operator() (const Position& position) const {
+        return std::hash<std::string>{}(position.ToString());
+    }
+};
+
 struct Size {
     int rows = 0;
     int cols = 0;
@@ -37,18 +44,34 @@ struct Size {
 class FormulaError {
 public:
     enum class Category {
-        Ref,    // ссылка на ячейку с некорректной позицией
-        Value,  // ячейка не может быть трактована как число
-        Div0,  // в результате вычисления возникло деление на ноль
+        Ref, // ссылка на ячейку с некорректной позицией
+        Value, // ячейка не может быть трактована как число
+        Div0, // в результате вычисления возникло деление на ноль
     };
 
-    FormulaError(Category category);
+    FormulaError(Category category)
+        : category_(category) {}
 
-    Category GetCategory() const;
+    Category GetCategory() const {
+        return category_;
+    }
 
-    bool operator==(FormulaError rhs) const;
+    bool operator==(FormulaError rhs) const {
+        return category_ == rhs.category_;
+    }
 
-    std::string_view ToString() const;
+    std::string_view ToString() const {
+        switch (category_) {
+            case Category::Ref:
+                return "#REF!";
+            case Category::Value:
+                return "#VALUE!";
+            case Category::Div0:
+                return "#DIV/0!";
+            default:
+                assert(false);
+        }
+    }
 
 private:
     Category category_;
@@ -97,6 +120,8 @@ public:
     // формуле. Список отсортирован по возрастанию и не содержит повторяющихся
     // ячеек. В случае текстовой ячейки список пуст.
     virtual std::vector<Position> GetReferencedCells() const = 0;
+
+    virtual void InvalidateCache() = 0;
 };
 
 inline constexpr char FORMULA_SIGN = '=';
