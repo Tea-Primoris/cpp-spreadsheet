@@ -90,7 +90,7 @@ private:
 // Реализуйте следующие методы
 Cell::Cell(SheetInterface& sheet, std::string text)
     : sheet_(sheet),
-      impl_(new EmptyImpl) {
+      impl_(std::make_unique<EmptyImpl>()) {
     Set(std::move(text));
 }
 
